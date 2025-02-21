@@ -1,6 +1,7 @@
 package com.fz.usercenter.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fz.usercenter.common.BaseResponse;
 import com.fz.usercenter.common.ErrorCode;
 import com.fz.usercenter.common.ResultUtils;
@@ -9,28 +10,34 @@ import com.fz.usercenter.model.domain.User;
 import com.fz.usercenter.model.request.UserLogin;
 import com.fz.usercenter.model.request.UserRegisterRequest;
 import com.fz.usercenter.service.UserService;
+import io.swagger.models.auth.In;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.fz.usercenter.content.UserContent.ADMIN_USER;
-import static com.fz.usercenter.content.UserContent.USER_LOGIN_STATE;
+import static com.fz.usercenter.content.UserContent.*;
 
 /**
  * @Author fang
  * @Date 2025/1/30 10:16
- * @注释
  */
 
 @RestController
 @RequestMapping("/user")
+@CrossOrigin(origins = {"http://localhost:8000","http://localhost:5173/"},allowCredentials = "true")
 public class UserController {
     @Resource
     private UserService userService;
+
+    @Resource
+    private RedisTemplate<String, Object> redisTemplate;
 //    用户注册
     @PostMapping("/register")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest){
@@ -61,7 +68,7 @@ public class UserController {
         String userPassword = userLogin.getUserPassword();
 //        再次进行判断
         if (StringUtils.isAnyBlank(userAccount,userPassword)){
-            throw new BusinessException(ErrorCode.NULL_ERROR);
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User user = userService.userLogin(userAccount, userPassword, request);
         return ResultUtils.success(user);
@@ -74,6 +81,18 @@ public class UserController {
             throw new BusinessException(ErrorCode.NULL_ERROR);
         }
         return userService.logoutUser(request);
+    }
+
+//    根据标签搜索
+
+//    required = false表示不把错误信息提交给前端
+    @GetMapping("/search/tags")
+    public BaseResponse<List<User>> searchUsersByTags(@RequestParam(required = false) List<String> tagNameList){
+        if (CollectionUtils.isEmpty(tagNameList)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        List<User> users = userService.searchUsersByTags(tagNameList);
+        return ResultUtils.success(users);
     }
 
 //    用户的登录态
@@ -93,10 +112,10 @@ public class UserController {
     }
 
 
-//    用户遍历
+//    用户搜索
     @GetMapping("/search")
     public BaseResponse<List<User>> searchUser(String username, HttpServletRequest request){
-        if (!isAdmin(request)){
+        if (!userService.isAdmin(request)){
             throw new BusinessException(ErrorCode.NO_AUTH);
         }
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
@@ -114,19 +133,37 @@ public class UserController {
 //    用户删除
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteUser(@RequestBody long id, HttpServletRequest request){
-        if (!isAdmin(request)){
+        if (!userService.isAdmin(request)){
             throw new BusinessException(ErrorCode.NO_AUTH);
         }
         boolean b = userService.removeById(id);
         return ResultUtils.success(b);
     }
 
-    /**
-     * 判断用户是不是管理员
-     */
-    public boolean isAdmin(HttpServletRequest request){
-        User user = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
-        return user != null && user.getUserrole() == ADMIN_USER;
+//    修改用户信息
+    @PostMapping("/update")
+    public BaseResponse<Integer> updateUser(@RequestBody User user,HttpServletRequest request){
+        if (user == null){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        int result = userService.updateUser(user,loginUser);
+        return ResultUtils.success(result);
     }
+    //    用户遍历,分页
+    @GetMapping("/recommend")
+    public BaseResponse<Page<User>> recommendUser(long pageSize, long pageNum, HttpServletRequest request){
+        Page<User> userPage = userService.addRedisWithPage(request);
+        if (userPage != null){
+            return ResultUtils.success(userPage);
+        }
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        userPage = userService.page(new Page<>(pageNum, pageSize), queryWrapper);
+        redisTemplate.opsForValue().set((String.format(REDIS_KEY_TITLE,userService.getLoginUser(request).getId())),userPage,60000, TimeUnit.MILLISECONDS);
+//        使用数据流的方式对数据进行脱敏处理
+        return ResultUtils.success(userPage);
+    }
+
+
 }
 

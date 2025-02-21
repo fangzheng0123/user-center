@@ -45,6 +45,6 @@ public class ResultUtils {
      * @return
      */
     public static BaseResponse error(int code,String msg,String description) {
-        return new BaseResponse<>(code,null,"",description);
+        return new BaseResponse<>(code,null,msg,description);
     }
 }

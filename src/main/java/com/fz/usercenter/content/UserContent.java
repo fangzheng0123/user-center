@@ -17,4 +17,6 @@ public interface UserContent {
     int DEFAULT_USER = 0;
     int ADMIN_USER = 1;
     String DEFAULT_AVATAR_URL = "https://img1.baidu.com/it/u=3999177305,1743000370&fm=253&fmt=auto&app=138&f=JPEG?w=859&h=800";
+
+    String REDIS_KEY_TITLE = "yupao:user:recommend:%s";
 }

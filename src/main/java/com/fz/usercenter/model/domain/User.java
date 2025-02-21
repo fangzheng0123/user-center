@@ -3,10 +3,7 @@ package com.fz.usercenter.model.domain;
 import java.io.Serializable;
 import java.util.Date;
 
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
 /**
@@ -19,8 +16,8 @@ public class User implements Serializable {
     /**
      * 用户id
      */
-    @TableId
-    private Long id;
+    @TableId(type = IdType.NONE)
+    private long id;
 
     /**
      * 用户名
@@ -90,6 +87,16 @@ public class User implements Serializable {
      */
     @TableLogic
     private Integer isdelete;
+
+    /**
+     * 用户标签
+     */
+    private String tags;
+
+    /**
+     * 用户简介
+     */
+    private String profile;
 
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;

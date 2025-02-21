@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    active: dev
   application:
     name: user-center
   datasource:
@@ -9,11 +11,25 @@ spring:
     #设置session超时时间
   session:
     timeout: 86400
+    store-type: redis
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+      # redis
+  redis:
+    host: localhost
+    database: 0
+    port: 6379
 server:
   port: 8080
   servlet:
     context-path: /api
+    session:
+      cookie:
+        domain: localhost  #为了防止前后端访问不一致，配置上一样的地址
 mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  #配置这个选项是可以在输出台打印sql日志
   global-config:
     db-config:
       logic-delete-field: isDelete   #全局逻辑删除的实体字段名
