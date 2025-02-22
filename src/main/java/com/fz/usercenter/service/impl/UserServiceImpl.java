@@ -228,7 +228,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     public User getLoginUser(HttpServletRequest request) {
         Object user = request.getSession().getAttribute(USER_LOGIN_STATE);
         if (user == null){
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
         }
         return (User) user;
     }
